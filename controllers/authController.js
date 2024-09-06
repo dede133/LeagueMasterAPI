@@ -1,7 +1,12 @@
 // controllers/authController.js
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+// authController.js
+
+const { generateResetToken, sendResetEmail } = require('../utils/authUtils'); // Importa funciones desde authUtils.js
+
+// Usa las funciones como antes
+
 
 // Configurar la conexión a PostgreSQL
 const pool = new Pool({
@@ -14,8 +19,8 @@ const pool = new Pool({
 
 // Controlador para registrar un nuevo usuario
 exports.registerUser = async (req, res) => {
-  const { name, email, password } = req.body; // Asegúrate de que estás extrayendo los campos correctos
-  // Verificar que todos los campos necesarios están presentes
+  const { name, email, password } = req.body;
+
   if (!name || !email || !password) {
     return res.status(400).json({ message: 'Por favor, completa todos los campos' });
   }
@@ -31,7 +36,7 @@ exports.registerUser = async (req, res) => {
 
     // Encriptar la contraseña
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt); // Aquí puede estar el problema si password es undefined
+    const hashedPassword = await bcrypt.hash(password, salt);
 
     // Insertar el nuevo usuario en la base de datos
     const insertUserQuery = `
@@ -40,11 +45,15 @@ exports.registerUser = async (req, res) => {
     `;
     const { rows } = await pool.query(insertUserQuery, [name, email, hashedPassword]);
 
-    // Crear y firmar un token JWT
-    const token = jwt.sign({ id: rows[0].id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    // Crear la sesión de usuario
+    req.session.user = {
+      id: rows[0].id,
+      name,
+      email
+    };
 
-    // Enviar respuesta con el token
-    res.status(201).json({ message: 'Usuario registrado con éxito', token });
+    // Enviar respuesta de éxito con la sesión creada
+    res.status(201).json({ message: 'Usuario registrado con éxito', user: req.session.user });
   } catch (error) {
     console.error('Error en el servidor:', error.message);
     res.status(500).json({ message: 'Error en el servidor', error: error.message });
@@ -52,38 +61,114 @@ exports.registerUser = async (req, res) => {
 };
 
 exports.loginUser = async (req, res) => {
-    const { email, password } = req.body;
-  
-    // Verificar que se recibieron el email y la contraseña
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Por favor, proporciona un email y una contraseña' });
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Por favor, proporciona un email y una contraseña' });
+  }
+
+  try {
+    // Verificar si el usuario existe en la base de datos
+    const userQuery = 'SELECT * FROM users WHERE email = $1';
+    const { rows } = await pool.query(userQuery, [email]);
+
+    if (rows.length === 0) {
+      return res.status(400).json({ message: 'Credenciales inválidas' });
     }
-  
-    try {
-      // Verificar si el usuario existe en la base de datos
-      const userQuery = 'SELECT * FROM users WHERE email = $1';
-      const { rows } = await pool.query(userQuery, [email]);
-  
-      if (rows.length === 0) {
-        return res.status(400).json({ message: 'Credenciales inválidas' });
-      }
-  
-      const user = rows[0];
-  
-      // Comparar la contraseña proporcionada con la almacenada
-      const isMatch = await bcrypt.compare(password, user.password);
-  
-      if (!isMatch) {
-        return res.status(400).json({ message: 'Credenciales inválidas' });
-      }
-  
-      // Si la contraseña coincide, crear y firmar un token JWT
-      const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-  
-      // Devolver el token y la información del usuario (sin la contraseña)
-      res.json({ message: 'Inicio de sesión exitoso', token, user: { id: user.id, name: user.name, email: user.email } });
-    } catch (error) {
-      console.error('Error en el servidor:', error.message);
-      res.status(500).json({ message: 'Error en el servidor', error: error.message });
+
+    const user = rows[0];
+
+    // Comparar la contraseña proporcionada con la almacenada
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Credenciales inválidas' });
     }
-  };
+
+    // Si la contraseña coincide, crea la sesión de usuario
+    req.session.user = {
+      id: user.id,
+      name: user.name,
+      email: user.email
+    };
+
+    console.log('Sesión creada:', req.session.user);
+
+    // Enviar respuesta de éxito con la sesión creada
+    res.json({ message: 'Inicio de sesión exitoso', user: req.session.user });
+  } catch (error) {
+    console.error('Error en el servidor:', error.message);
+    res.status(500).json({ message: 'Error en el servidor', error: error.message });
+  }
+};
+
+exports.logoutUser = (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Error al cerrar sesión:', err);
+      return res.status(500).json({ message: 'Error al cerrar la sesión.' });
+    }
+    res.clearCookie('connect.sid'); // Elimina la cookie de sesión
+    res.json({ message: 'Sesión cerrada exitosamente.' });
+  });
+};
+
+exports.requestPasswordReset = async (req, res) => {
+  const { email } = req.body;
+  
+  // Verifica si el correo existe en la base de datos
+  const userQuery = 'SELECT * FROM users WHERE email = $1';
+  const { rows } = await pool.query(userQuery, [email]);
+  
+  if (rows.length === 0) {
+    return res.status(404).json({ message: 'Correo no encontrado' });
+  }
+
+  // Genera un token de restablecimiento de contraseña
+  const resetToken = generateResetToken(); // Implementa esta función
+  const expirationDate = new Date(Date.now() + 3600000); // 1 hora de validez
+  
+  // Guarda el token y la fecha de expiración en la base de datos
+  const insertTokenQuery = 'UPDATE users SET reset_token = $1, reset_token_expiration = $2 WHERE email = $3';
+  await pool.query(insertTokenQuery, [resetToken, expirationDate, email]);
+  
+  // Enviar correo electrónico al usuario con el enlace de restablecimiento
+  sendResetEmail(email, resetToken); // Implementa esta función para enviar correos
+
+  res.json({ message: 'Se ha enviado un enlace de restablecimiento de contraseña a tu correo' });
+};
+
+exports.verifyResetToken = async (req, res) => {
+  const { token } = req.query;
+  
+  // Verifica si el token es válido y no ha expirado
+  const tokenQuery = 'SELECT * FROM users WHERE reset_token = $1 AND reset_token_expiration > NOW()';
+  const { rows } = await pool.query(tokenQuery, [token]);
+  
+  if (rows.length === 0) {
+    return res.status(400).json({ message: 'Token de restablecimiento inválido o expirado' });
+  }
+
+  res.json({ message: 'Token válido. Continúa para restablecer tu contraseña' });
+};
+
+exports.resetPassword = async (req, res) => {
+  const { token, newPassword } = req.body;
+  
+  // Verifica si el token es válido y no ha expirado
+  const tokenQuery = 'SELECT * FROM users WHERE reset_token = $1 AND reset_token_expiration > NOW()';
+  const { rows } = await pool.query(tokenQuery, [token]);
+  
+  if (rows.length === 0) {
+    return res.status(400).json({ message: 'Token de restablecimiento inválido o expirado' });
+  }
+
+  // Encripta la nueva contraseña
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  
+  // Actualiza la contraseña en la base de datos y elimina el token
+  const updatePasswordQuery = 'UPDATE users SET password = $1, reset_token = NULL, reset_token_expiration = NULL WHERE id = $2';
+  await pool.query(updatePasswordQuery, [hashedPassword, rows[0].id]);
+
+  res.json({ message: 'Contraseña restablecida con éxito' });
+};

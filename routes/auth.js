@@ -1,12 +1,28 @@
-// routes/auth.js
 const express = require('express');
-const { registerUser, loginUser } = require('../controllers/authController');
+const passport = require('../config/passport');
+const { registerUser, loginUser, logoutUser } = require('../controllers/authController');
+const { isAuthenticated } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-// Ruta para registrar un nuevo usuario
-router.post('/register', registerUser);
+// Ruta para iniciar sesión con Google
+router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
-router.post('/login', loginUser); 
+// Ruta de redirección después de la autenticación de Google
+router.get('/google/callback', passport.authenticate('google', { failureRedirect: '/' }), (req, res) => {
+  // Redirigir al usuario al área protegida después del login exitoso
+  res.redirect('/api/auth/ruta-protegida');
+});
+
+// Ruta para el registro e inicio de sesión
+router.post('/register', registerUser);
+router.post('/login', loginUser);
+
+// Ruta para cerrar sesión
+router.post('/logout', logoutUser);
+
+router.get('/ruta-protegida', isAuthenticated, (req, res) => {
+    res.json({ message: 'Acceso autorizado. Esta es una ruta protegida.' });
+  });
 
 module.exports = router;

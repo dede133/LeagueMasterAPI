@@ -1,22 +1,20 @@
-// middleware/authMiddleware.js
-const jwt = require('jsonwebtoken');
+const isAuthenticated = (req, res, next) => {
+  console.log('Verificando autenticación. Sesión actual:', req.session); // Log para depuración
 
-const authMiddleware = (req, res, next) => {
-  const token = req.header('Authorization');
-
-  // Verificar si se proporcionó un token
-  if (!token) {
-    return res.status(401).json({ message: 'Acceso denegado. No se proporcionó un token.' });
+  // Verificar si hay un usuario autenticado con Passport
+  if (req.isAuthenticated()) {
+    console.log('Usuario autenticado con Passport:', req.user); // Confirmar usuario autenticado con Passport
+    return next();
   }
 
-  try {
-    // Verificar el token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // Adjuntar el usuario decodificado al objeto de solicitud
-    next();
-  } catch (error) {
-    res.status(400).json({ message: 'Token no válido' });
+  // Verificar si hay un usuario autenticado con el sistema de login propio
+  if (req.session && req.session.user) {
+    console.log('Usuario autenticado con el sistema de login propio:', req.session.user); // Confirmar usuario autenticado con login propio
+    return next();
   }
+
+  console.log('No hay sesión activa o usuario no autenticado'); // Si no hay sesión activa
+  res.status(401).json({ message: 'No autorizado. Inicia sesión para acceder a esta ruta.' });
 };
 
-module.exports = authMiddleware;
+module.exports = { isAuthenticated };
