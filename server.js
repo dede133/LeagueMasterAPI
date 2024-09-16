@@ -5,9 +5,18 @@ const session = require('express-session');
 const { Pool } = require('pg');
 const passport = require('./config/passport'); // Importa la configuración de Passport
 const path = require('path'); // Requerido para enviar archivos
+const cors = require('cors'); // Importar CORS correctamente
 
 // Crear una instancia de la aplicación Express
 const app = express();
+
+// Configurar CORS para permitir solicitudes desde tu frontend
+app.use(cors({
+  origin: 'http://localhost:3000', // Asegúrate de reemplazar esto con la URL de tu frontend
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Métodos permitidos
+  credentials: true, // Permitir cookies y credenciales
+}));
+
 
 // Middleware para parsear JSON
 app.use(express.json());
@@ -50,6 +59,12 @@ app.use(session({
     maxAge: 1000 * 60 * 60 * 24 
   }
 }));
+
+app.use((req, res, next) => {
+  console.log('Cookies recibidas:', req.headers.cookie);
+  console.log('Sesión actual:', req.session);
+  next();
+});
 
 // Inicializar Passport y la sesión
 app.use(passport.initialize());

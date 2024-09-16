@@ -92,7 +92,7 @@ exports.loginUser = async (req, res) => {
       email: user.email
     };
 
-    console.log('Sesión creada:', req.session.user);
+    console.log('Sesión creada:', req.session);
 
     // Enviar respuesta de éxito con la sesión creada
     res.json({ message: 'Inicio de sesión exitoso', user: req.session.user });
@@ -171,4 +171,75 @@ exports.resetPassword = async (req, res) => {
   await pool.query(updatePasswordQuery, [hashedPassword, rows[0].id]);
 
   res.json({ message: 'Contraseña restablecida con éxito' });
+};
+
+exports.deleteUser = async (req, res) => {
+  const { id } = req.params; // Asume que el ID del usuario se pasa como parámetro en la URL
+
+  try {
+    // Verifica si el usuario existe
+    const userQuery = 'SELECT * FROM users WHERE id = $1';
+    const { rowCount } = await pool.query(userQuery, [id]);
+
+    if (rowCount === 0) {
+      console.warn('Usuario no encontrado:', id);
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    // Elimina el usuario de la base de datos
+    const deleteUserQuery = 'DELETE FROM users WHERE id = $1';
+    await pool.query(deleteUserQuery, [id]);
+
+    console.log('Usuario eliminado con éxito:', id);
+
+    // Si el usuario está autenticado, destruir la sesión
+    if (req.session.user && req.session.user.id === parseInt(id, 10)) {
+      req.session.destroy((err) => {
+        if (err) {
+          console.error('Error al cerrar sesión después de eliminar el usuario:', err);
+          return res.status(500).json({ message: 'Error al cerrar la sesión después de eliminar el usuario.' });
+        }
+        res.clearCookie('connect.sid'); // Elimina la cookie de sesión
+        return res.json({ message: 'Usuario eliminado y sesión cerrada con éxito.' }); // Asegúrate de enviar la respuesta aquí
+      });
+    } else {
+      // Si no hay sesión para destruir, simplemente responde con éxito
+      return res.json({ message: 'Usuario eliminado con éxito.' });
+    }
+  } catch (error) {
+    console.error('Error en el servidor al eliminar el usuario:', error.message);
+    return res.status(500).json({ message: 'Error en el servidor', error: error.message });
+  }
+};
+
+
+// authController.js
+exports.getUserProfile = async (req, res) => {
+  try {
+    console.log('Petición para obtener perfil de usuario recibida');
+
+    // Verificar si la sesión de usuario existe
+    if (!req.session.user) {
+      console.log('No hay sesión de usuario activa');
+      return res.status(401).json({ message: 'No autenticado' });
+    }
+
+    console.log('Usuario autenticado, ID de usuario:', req.session.user.id);
+
+    // Obtener el usuario autenticado desde la base de datos
+    const userQuery = 'SELECT id, name, email FROM users WHERE id = $1';
+    const { rows } = await pool.query(userQuery, [req.session.user.id]);
+
+    if (rows.length === 0) {
+      console.log('Usuario no encontrado en la base de datos');
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    console.log('Usuario encontrado:', rows[0]);
+
+    res.json({ user: rows[0] });
+  } catch (error) {
+    console.error('Error en el servidor al obtener el perfil del usuario:', error.message);
+    res.status(500).json({ message: 'Error en el servidor', error: error.message });
+  }
 };
