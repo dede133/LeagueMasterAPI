@@ -60,6 +60,12 @@ app.use(session({
   }
 }));
 
+app.use((req, res, next) => {
+  console.log('Cookies recibidas:', req.headers.cookie);
+  console.log('Sesión actual:', req.session);
+  next();
+});
+
 // Inicializar Passport y la sesión
 app.use(passport.initialize());
 app.use(passport.session());
