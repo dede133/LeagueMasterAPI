@@ -15,14 +15,9 @@ router.get('/google/callback', passport.authenticate('google', { failureRedirect
 });
 
 router.get('/user', getUserProfile);
-
-// Ruta para el registro e inicio de sesión
 router.post('/register', registerUser);
 router.post('/login', loginUser);
-
-// Ruta para cerrar sesión
 router.post('/logout', logoutUser);
-
 router.delete('/user/:id', deleteUser); 
 
 router.get('/ruta-protegida', isAuthenticated, (req, res) => {

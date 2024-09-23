@@ -7,6 +7,10 @@ const passport = require('./config/passport'); // Importa la configuración de P
 const path = require('path'); // Requerido para enviar archivos
 const cors = require('cors'); // Importar CORS correctamente
 
+// Importar rutas
+const authRoutes = require('./routes/auth');
+const fieldRoutes = require('./routes/field');
+
 // Crear una instancia de la aplicación Express
 const app = express();
 
@@ -75,11 +79,13 @@ app.get('/login', (req, res) => {
   res.sendFile(path.join(__dirname, 'login.html'));
 });
 
-// Importar rutas
-const authRoutes = require('./routes/auth');
 
 // Usar rutas
 app.use('/api/auth', authRoutes);
+
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+app.use('/api/field', fieldRoutes);
 
 // Definir el puerto del servidor
 const PORT = process.env.PORT || 5000;
