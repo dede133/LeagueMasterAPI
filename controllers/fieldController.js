@@ -30,7 +30,14 @@ exports.addField = async (req, res) => {
   try {
     console.log('Datos recibidos:', req.body);
     console.log('Archivos recibidos:', req.files);
+    console.log('Sesión activa:', req.session.user);
 
+        // Obtener la información del usuario desde la sesión
+    const user = req.session.user;
+    if (!user) {
+      return res.status(401).json({ message: 'No autorizado. Inicia sesión para continuar.' });
+    }
+    
     const {
       name,
       latitude,
@@ -54,11 +61,24 @@ exports.addField = async (req, res) => {
     }
 
     // Inserta el campo en la base de datos incluso con otros campos vacíos
-    const insertFieldQuery = `
-      INSERT INTO fields (name, latitude, longitude, address, field_type, field_info, photo_url, features, availability, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW()) RETURNING *
+      const insertFieldQuery = `
+      INSERT INTO fields (name, latitude, longitude, address, field_type, field_info, photo_url, features, availability, owner_user_id, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW()) RETURNING *
     `;
-    const values = [name, lat, lng, address || null, field_type || null, field_info || null, photoUrls || null, features || null, availability || null];
+    
+    const values = [
+      name, 
+      lat, 
+      lng, 
+      address || null, 
+      field_type || null, 
+      field_info || null, 
+      photoUrls || null, 
+      features || null, 
+      availability || null, 
+      user.id // El ID del usuario autenticado
+    ];
+  
 
     const { rows } = await pool.query(insertFieldQuery, values);
 

@@ -6,6 +6,9 @@ const { Pool } = require('pg');
 const passport = require('./config/passport'); // Importa la configuración de Passport
 const path = require('path'); // Requerido para enviar archivos
 const cors = require('cors'); // Importar CORS correctamente
+const cookieParser = require('cookie-parser'); // Importar cookie-parser
+const jwt = require('jsonwebtoken'); // Importar jsonwebtoken para verificar JWT
+
 
 // Importar rutas
 const authRoutes = require('./routes/auth');
@@ -24,6 +27,9 @@ app.use(cors({
 
 // Middleware para parsear JSON
 app.use(express.json());
+
+// Middleware para manejar cookies
+app.use(cookieParser());
 
 // Middleware para parsear solicitudes de formularios
 app.use(express.urlencoded({ extended: true })); // Asegúrate de añadir esta línea
@@ -79,6 +85,27 @@ app.get('/login', (req, res) => {
   res.sendFile(path.join(__dirname, 'login.html'));
 });
 
+// Verificar el token JWT
+const verifyToken = (token) => {
+  try {
+    return jwt.verify(token, process.env.JWT_SECRET); // Verifica el JWT con tu secreto
+  } catch (err) {
+    console.error('Error al verificar el token:', err);
+    throw new Error('Token inválido');
+  }
+};
+
+// Ruta para verificar la autenticación
+app.get('/api/check-auth', (req, res) => {
+  // Verificar si hay una sesión activa
+  if (req.session && req.session.user) {
+    console.log('Sesión activa:', req.session.user);
+    return res.status(200).json({ isAuthenticated: true, user: req.session.user });
+  } else {
+    console.log('No hay sesión activa');
+    return res.status(401).json({ isAuthenticated: false });
+  }
+});
 
 // Usar rutas
 app.use('/api/auth', authRoutes);

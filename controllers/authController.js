@@ -41,13 +41,13 @@ exports.registerUser = async (req, res) => {
     // Insertar el nuevo usuario en la base de datos
     const insertUserQuery = `
       INSERT INTO users (name, email, password)
-      VALUES ($1, $2, $3) RETURNING id
+      VALUES ($1, $2, $3) RETURNING user_id
     `;
     const { rows } = await pool.query(insertUserQuery, [name, email, hashedPassword]);
 
     // Crear la sesión de usuario
     req.session.user = {
-      id: rows[0].id,
+      id: rows[0].user_id,
       name,
       email
     };
@@ -87,7 +87,7 @@ exports.loginUser = async (req, res) => {
 
     // Si la contraseña coincide, crea la sesión de usuario
     req.session.user = {
-      id: user.id,
+      id: user.user_id,
       name: user.name,
       email: user.email
     };
@@ -178,7 +178,7 @@ exports.deleteUser = async (req, res) => {
 
   try {
     // Verifica si el usuario existe
-    const userQuery = 'SELECT * FROM users WHERE id = $1';
+    const userQuery = 'SELECT * FROM users WHERE user_id = $1';
     const { rowCount } = await pool.query(userQuery, [id]);
 
     if (rowCount === 0) {
@@ -187,7 +187,7 @@ exports.deleteUser = async (req, res) => {
     }
 
     // Elimina el usuario de la base de datos
-    const deleteUserQuery = 'DELETE FROM users WHERE id = $1';
+    const deleteUserQuery = 'DELETE FROM users WHERE user_id = $1';
     await pool.query(deleteUserQuery, [id]);
 
     console.log('Usuario eliminado con éxito:', id);
@@ -227,7 +227,7 @@ exports.getUserProfile = async (req, res) => {
     console.log('Usuario autenticado, ID de usuario:', req.session.user.id);
 
     // Obtener el usuario autenticado desde la base de datos
-    const userQuery = 'SELECT id, name, email FROM users WHERE id = $1';
+    const userQuery = 'SELECT user_id, name, email FROM users WHERE user_id = $1';
     const { rows } = await pool.query(userQuery, [req.session.user.id]);
 
     if (rows.length === 0) {
