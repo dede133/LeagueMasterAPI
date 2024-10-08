@@ -40,16 +40,17 @@ exports.registerUser = async (req, res) => {
 
     // Insertar el nuevo usuario en la base de datos
     const insertUserQuery = `
-      INSERT INTO users (name, email, password)
-      VALUES ($1, $2, $3) RETURNING user_id
+      INSERT INTO users (name, email, password, user_role)
+      VALUES ($1, $2, $3, $4) RETURNING user_id
     `;
-    const { rows } = await pool.query(insertUserQuery, [name, email, hashedPassword]);
+    const { rows } = await pool.query(insertUserQuery, [name, email, hashedPassword, "user"]);
 
     // Crear la sesión de usuario
     req.session.user = {
       id: rows[0].user_id,
       name,
-      email
+      email,
+      user_role: "user"
     };
 
     // Enviar respuesta de éxito con la sesión creada
@@ -89,7 +90,8 @@ exports.loginUser = async (req, res) => {
     req.session.user = {
       id: user.user_id,
       name: user.name,
-      email: user.email
+      email: user.email,
+      user_role: user.user_role
     };
 
     console.log('Sesión creada:', req.session);
@@ -212,6 +214,18 @@ exports.deleteUser = async (req, res) => {
   }
 };
 
+exports.checkUserAuth = async (req, res) => {
+  // Ruta para verificar la autenticación
+  console.log("Verificando la session de usuario")
+    if (req.session && req.session.user) {
+      console.log('Sesión activa:', req.session.user);
+      return res.status(200).json({ isAuthenticated: true, user: req.session.user });
+    } else {
+      console.log('No hay sesión activa');
+      return res.status(401).json({ isAuthenticated: false });
+    }
+  };
+  
 
 // authController.js
 exports.getUserProfile = async (req, res) => {

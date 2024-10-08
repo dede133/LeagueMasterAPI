@@ -126,5 +126,29 @@ exports.getAllFields = async (req, res) => {
   }
 };
 
+// Obtener campos por el user_id (campos del usuario autenticado)
+exports.getFieldsByUser = async (req, res) => {
+  try {
+    const user = req.session.user;
+
+    if (!user) {
+      return res.status(401).json({ message: 'No autorizado. Inicia sesión para continuar.' });
+    }
+
+    const fieldsQuery = 'SELECT * FROM fields WHERE owner_user_id = $1';
+    const { rows } = await pool.query(fieldsQuery, [user.id]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'No tienes campos disponibles' });
+    }
+
+    res.json({ fields: rows });
+  } catch (error) {
+    console.error('Error al obtener los campos del usuario:', error.message);
+    res.status(500).json({ message: 'Error en el servidor', error: error.message });
+  }
+};
+
+
 // Exportar la configuración de Multer como middleware
 exports.upload = upload;

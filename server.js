@@ -13,6 +13,9 @@ const jwt = require('jsonwebtoken'); // Importar jsonwebtoken para verificar JWT
 // Importar rutas
 const authRoutes = require('./routes/auth');
 const fieldRoutes = require('./routes/field');
+const reservationRoutes = require('./routes/reservation');
+const availabilityRoutes = require('./routes/availability');
+
 
 // Crear una instancia de la aplicación Express
 const app = express();
@@ -95,17 +98,6 @@ const verifyToken = (token) => {
   }
 };
 
-// Ruta para verificar la autenticación
-app.get('/api/check-auth', (req, res) => {
-  // Verificar si hay una sesión activa
-  if (req.session && req.session.user) {
-    console.log('Sesión activa:', req.session.user);
-    return res.status(200).json({ isAuthenticated: true, user: req.session.user });
-  } else {
-    console.log('No hay sesión activa');
-    return res.status(401).json({ isAuthenticated: false });
-  }
-});
 
 // Usar rutas
 app.use('/api/auth', authRoutes);
@@ -113,6 +105,11 @@ app.use('/api/auth', authRoutes);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use('/api/field', fieldRoutes);
+
+app.use('/api/reservations', reservationRoutes);
+
+app.use('/api/availability', availabilityRoutes);
+
 
 // Definir el puerto del servidor
 const PORT = process.env.PORT || 5000;
