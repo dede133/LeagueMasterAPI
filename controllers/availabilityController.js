@@ -42,21 +42,24 @@ exports.addOrUpdateWeeklyAvailability = async (req, res) => {
   }
 };
 
-
 // Añadir fechas bloqueadas
 exports.addBlockedDate = async (req, res) => {
   const blockedDatesArray = req.body; // Recibir un array de fechas bloqueadas
-  console.log(req.body)
+  console.log(req.body);
+
   try {
     for (const blockedDate of blockedDatesArray) {
       const { field_id, start_time, end_time, reason = '' } = blockedDate;
+
+      // Si end_time es null, asignar start_time a end_time
+      const finalEndTime = end_time ? end_time : start_time;
 
       // Insertar cada rango de fechas bloqueadas
       const insertBlockedDateQuery = `
         INSERT INTO blocked_dates (field_id, start_time, end_time, reason) 
         VALUES ($1, $2, $3, $4) RETURNING *;
       `;
-      const values = [field_id, start_time, end_time, reason];
+      const values = [field_id, start_time, finalEndTime, reason];
 
       await pool.query(insertBlockedDateQuery, values);
     }
@@ -67,7 +70,6 @@ exports.addBlockedDate = async (req, res) => {
     res.status(500).json({ message: 'Error al añadir fechas bloqueadas' });
   }
 };
-
 
 // Eliminar una fecha bloqueada
 exports.deleteBlockedDate = async (req, res) => {
@@ -87,7 +89,7 @@ exports.deleteBlockedDate = async (req, res) => {
 };
 
 // Obtener disponibilidad semanal y fechas bloqueadas para un campo
-exports.getAvailabilityAndBlockedDates = async (req, res) => {
+exports.getWeeklyAvailability = async (req, res) => {
   const { field_id } = req.params;
 
   try {
@@ -97,18 +99,31 @@ exports.getAvailabilityAndBlockedDates = async (req, res) => {
       [field_id]
     );
 
-    // Obtener las fechas bloqueadas
+    res.status(200).json({
+      weeklyAvailability: weeklyAvailability.rows,
+    });
+  } catch (error) {
+    console.error('Error al obtener disponibilidad semanal:', error);
+    res.status(500).json({ message: 'Error al obtener disponibilidad semanal' });
+  }
+};
+
+exports.getBlockedDatesByDate = async (req, res) => {
+  const { field_id } = req.params;
+  const { start_date, end_date } = req.query; // Recibir las fechas por query
+
+  try {
+    // Obtener las fechas bloqueadas dentro de un rango de fechas
     const blockedDates = await pool.query(
-      `SELECT * FROM blocked_dates WHERE field_id = $1`,
-      [field_id]
+      `SELECT * FROM blocked_dates WHERE field_id = $1 AND start_time >= $2 AND end_time <= $3`,
+      [field_id, start_date, end_date]
     );
 
     res.status(200).json({
-      weeklyAvailability: weeklyAvailability.rows,
       blockedDates: blockedDates.rows,
     });
   } catch (error) {
-    console.error('Error al obtener disponibilidad y fechas bloqueadas:', error);
-    res.status(500).json({ message: 'Error al obtener disponibilidad y fechas bloqueadas' });
+    console.error('Error al obtener fechas bloqueadas:', error);
+    res.status(500).json({ message: 'Error al obtener fechas bloqueadas' });
   }
 };

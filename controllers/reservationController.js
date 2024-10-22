@@ -10,35 +10,65 @@ const pool = new Pool({
     port: process.env.DB_PORT,
   });
 
-// Hacer una reserva
 exports.makeReservation = async (req, res) => {
-  const { user_id, field_id, reservation_date, reservation_start_time, reservation_end_time } = req.body;
-
-  try {
-    // Verificar si la franja está disponible y no bloqueada
-    const availability = await pool.query(
-      `SELECT * FROM weekly_availability 
-       WHERE field_id = $1 AND day_of_week = $2 
-       AND start_time <= $3 AND end_time >= $4`,
-      [field_id, new Date(reservation_date).getDay() + 1, reservation_start_time, reservation_end_time]
-    );
-
-    if (availability.rows.length === 0) {
-      return res.status(400).json({ message: 'Franja horaria no disponible' });
+    const { field_id, reservation_date, reservation_start_time, reservation_end_time } = req.body;
+  
+    const client = await pool.connect();
+  
+    try {
+      // Verificar que el usuario esté autenticado
+      const user = req.session.user;
+      if (!user) {
+        return res.status(401).json({ message: 'No autorizado. Inicia sesión para continuar.' });
+      }
+  
+      const user_id = user.id;
+  
+      await client.query('BEGIN');
+  
+      // Verificar si la franja está bloqueada en las fechas bloqueadas
+      const blocked = await client.query(
+        `SELECT * FROM blocked_dates 
+         WHERE field_id = $1 
+         AND ($2::timestamp, $3::timestamp) OVERLAPS (start_time, end_time)`,
+        [field_id, reservation_date + ' ' + reservation_start_time, reservation_date + ' ' + reservation_end_time]
+      );
+  
+      if (blocked.rows.length > 0) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ message: 'La franja horaria está bloqueada' });
+      }
+  
+      // Verificar si la franja está disponible en weekly_availability
+      const availability = await client.query(
+        `SELECT * FROM weekly_availability 
+         WHERE field_id = $1 AND day_of_week = $2 
+         AND start_time <= $3 AND end_time >= $4`,
+        [field_id, new Date(reservation_date).getDay() + 1, reservation_start_time, reservation_end_time]
+      );
+  
+      if (availability.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ message: 'Franja horaria no disponible' });
+      }
+  
+      // Crear la reserva
+      await client.query(
+        `INSERT INTO reservations (field_id, user_id, reservation_date, reservation_start_time, reservation_end_time, price, status) 
+         VALUES ($1, $2, $3, $4, $5, $6, 'booked')`,
+        [field_id, user_id, reservation_date, reservation_start_time, reservation_end_time, availability.rows[0].price]
+      );
+  
+      await client.query('COMMIT');
+  
+      res.status(200).json({ message: 'Reserva realizada con éxito' });
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('Error al realizar la reserva:', error);
+      res.status(500).json({ message: 'Error al realizar la reserva' });
+    } finally {
+      client.release();
     }
-
-    // Crear la reserva
-    await pool.query(
-      `INSERT INTO reservations (field_id, user_id, reservation_date, reservation_start_time, reservation_end_time, price, status) 
-       VALUES ($1, $2, $3, $4, $5, $6, 'booked')`,
-      [field_id, user_id, reservation_date, reservation_start_time, reservation_end_time, availability.rows[0].price]
-    );
-
-    res.status(200).json({ message: 'Reserva realizada con éxito' });
-  } catch (error) {
-    console.error('Error al realizar la reserva:', error);
-    res.status(500).json({ message: 'Error al realizar la reserva' });
-  }
 };
 
 // Cancelar una reserva
@@ -65,5 +95,61 @@ exports.updateReservationStatus = async (req, res) => {
   } catch (error) {
     console.error('Error al actualizar el estado de la reserva:', error);
     res.status(500).json({ message: 'Error al actualizar el estado de la reserva' });
+  }
+};
+
+// Obtener reservas para un campo específico
+exports.getReservationsByField = async (req, res) => {
+  const { field_id } = req.params; // Obtener el field_id desde los parámetros de la URL
+
+  const client = await pool.connect();
+
+  try {
+    // Obtener todas las reservas asociadas a un campo específico
+    const reservations = await client.query(
+      `SELECT * FROM reservations 
+       WHERE field_id = $1
+       ORDER BY reservation_date, reservation_start_time`,
+      [field_id]
+    );
+
+    if (reservations.rows.length === 0) {
+      return res.status(404).json({ message: 'No se encontraron reservas para este campo' });
+    }
+
+    res.status(200).json(reservations.rows);
+  } catch (error) {
+    console.error('Error al obtener reservas:', error);
+    res.status(500).json({ message: 'Error al obtener las reservas' });
+  } finally {
+    client.release();
+  }
+};
+
+// Obtener reservas por campo y fechas
+exports.getReservationsByFieldAndDate = async (req, res) => {
+  const { field_id } = req.params; // Obtener el field_id desde los parámetros de la URL
+  const { start, end } = req.query; // Obtener las fechas desde los parámetros de la query (start y end)
+
+  const client = await pool.connect();
+
+  try {
+    // Consultar las reservas que caen dentro del rango de fechas para el campo específico
+    const reservations = await client.query(
+      `SELECT * FROM reservations
+       WHERE field_id = $1
+       AND reservation_date >= $2
+       AND reservation_date <= $3
+       ORDER BY reservation_date, reservation_start_time`,
+      [field_id, start, end]
+    );
+
+    // Si no se encuentran reservas, devolver un array vacío
+    res.status(200).json(reservations.rows);
+  } catch (error) {
+    console.error('Error al obtener reservas:', error);
+    res.status(500).json({ message: 'Error al obtener las reservas' });
+  } finally {
+    client.release();
   }
 };
