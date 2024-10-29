@@ -12,7 +12,7 @@ const pool = new Pool({
 // Añadir o actualizar disponibilidad semanal
 exports.addOrUpdateWeeklyAvailability = async (req, res) => {
   const availabilityArray = req.body; // Recibir un array de días
-
+  console.log("avaiability", req.body)
   try {
     for (const availability of availabilityArray) {
       const { field_id, day_of_week, start_time, end_time, price = 60, available_durations = [60] } = availability;
@@ -46,7 +46,6 @@ exports.addOrUpdateWeeklyAvailability = async (req, res) => {
 exports.addBlockedDate = async (req, res) => {
   const blockedDatesArray = req.body; // Recibir un array de fechas bloqueadas
   console.log(req.body);
-
   try {
     for (const blockedDate of blockedDatesArray) {
       const { field_id, start_time, end_time, reason = '' } = blockedDate;
@@ -72,21 +71,39 @@ exports.addBlockedDate = async (req, res) => {
 };
 
 // Eliminar una fecha bloqueada
+// Eliminar fechas bloqueadas por rango
 exports.deleteBlockedDate = async (req, res) => {
-  const { blocked_id } = req.params;
-
+  const { field_id, start_time, end_time } = req.query;
+  console.log(req.body)
   try {
-    await pool.query(
-      `DELETE FROM blocked_dates WHERE blocked_id = $1`,
-      [blocked_id]
-    );
+    // Verificamos que se reciban las fechas
+    if (!start_time) {
+      return res.status(400).json({ message: 'Se requiere una fecha de inicio' });
+    }
 
-    res.status(200).json({ message: 'Fecha bloqueada eliminada con éxito' });
+    // Si end_time es null, eliminamos solo la fecha específica de start_time
+    const finalEndTime = end_time ? end_time : start_time;
+
+    const deleteQuery = `
+      DELETE FROM blocked_dates 
+      WHERE field_id = $1 AND start_time = $2 AND end_time = $3;
+    `;
+    const values = [field_id, start_time, finalEndTime];
+
+    const result = await pool.query(deleteQuery, values);
+
+    if (result.rowCount > 0) {
+      res.status(200).json({ message: 'Fechas bloqueadas eliminadas con éxito' });
+    } else {
+      res.status(404).json({ message: 'No se encontraron fechas bloqueadas para eliminar' });
+    }
   } catch (error) {
-    console.error('Error al eliminar fecha bloqueada:', error);
-    res.status(500).json({ message: 'Error al eliminar fecha bloqueada' });
+    console.error('Error al eliminar fechas bloqueadas:', error);
+    res.status(500).json({ message: 'Error al eliminar fechas bloqueadas' });
   }
 };
+
+
 
 // Obtener disponibilidad semanal y fechas bloqueadas para un campo
 exports.getWeeklyAvailability = async (req, res) => {
@@ -127,3 +144,29 @@ exports.getBlockedDatesByDate = async (req, res) => {
     res.status(500).json({ message: 'Error al obtener fechas bloqueadas' });
   }
 };
+
+exports.getBlockedDates = async (req, res) => {
+  const { field_id } = req.params;
+  try {
+    // Obtener las fechas bloqueadas y renombrar las columnas en la consulta
+    const blockedDates = await pool.query(
+      `SELECT 
+        blocked_id, 
+        field_id, 
+        start_time AS "from", 
+        end_time AS "to", 
+        reason 
+      FROM blocked_dates 
+      WHERE field_id = $1`,
+      [field_id]
+    );
+
+    res.status(200).json({
+      blockedDates: blockedDates.rows,
+    });
+  } catch (error) {
+    console.error('Error al obtener fechas bloqueadas:', error);
+    res.status(500).json({ message: 'Error al obtener fechas bloqueadas' });
+  }
+};
+
