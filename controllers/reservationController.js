@@ -153,3 +153,59 @@ exports.getReservationsByFieldAndDate = async (req, res) => {
     client.release();
   }
 };
+
+exports.getReservationsByUser = async (req, res) => {
+  const { user_id } = req.params;
+
+  const client = await pool.connect();
+
+  try {
+    // Obtener solo las reservas futuras del usuario
+    const currentDate = new Date().toISOString(); // fecha actual en UTC
+    const reservations = await client.query(
+      `SELECT * FROM reservations
+       WHERE user_id = $1
+       AND reservation_date >= $2
+       ORDER BY reservation_date, reservation_start_time`,
+      [user_id, currentDate]
+    );
+
+    res.status(200).json(reservations.rows);
+  } catch (error) {
+    console.error('Error al obtener reservas:', error);
+    res.status(500).json({ message: 'Error al obtener las reservas' });
+  } finally {
+    client.release();
+  }
+};
+
+// src/controllers/reservationController.js
+
+exports.cancelReservation = async (req, res) => {
+  const { reservation_id } = req.params; // Obtener el ID de la reserva desde los parámetros de la URL
+
+  const client = await pool.connect();
+
+  try {
+    const cancelQuery = `
+      UPDATE reservations
+      SET status = 'cancelled'
+      WHERE reservation_id = $1
+      RETURNING *;
+    `;
+    const values = [reservation_id];
+
+    const result = await client.query(cancelQuery, values);
+
+    if (result.rowCount > 0) {
+      res.status(200).json({ message: 'Reserva cancelada con éxito', reservation: result.rows[0] });
+    } else {
+      res.status(404).json({ message: 'No se encontró la reserva para cancelar' });
+    }
+  } catch (error) {
+    console.error('Error al cancelar reserva:', error);
+    res.status(500).json({ message: 'Error al cancelar la reserva' });
+  } finally {
+    client.release();
+  }
+};
