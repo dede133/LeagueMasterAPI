@@ -42,6 +42,27 @@ exports.addOrUpdateWeeklyAvailability = async (req, res) => {
   }
 };
 
+exports.deleteWeeklyAvailabilityBatch = async (req, res) => {
+  const { field_id } = req.params; // Obtiene field_id de los parámetros de la URL
+  const daysToDelete = req.body; // Obtiene el array de días del cuerpo de la solicitud
+
+  try {
+    for (const { day_of_week } of daysToDelete) {
+      await pool.query(
+        `DELETE FROM weekly_availability 
+         WHERE field_id = $1 AND day_of_week = $2`,
+        [field_id, day_of_week]
+      );
+    }
+
+    res.status(200).json({ message: 'Disponibilidad semanal eliminada con éxito.' });
+  } catch (error) {
+    console.error('Error al eliminar la disponibilidad semanal:', error);
+    res.status(500).json({ message: 'Error al eliminar la disponibilidad semanal.' });
+  }
+};
+
+
 // Añadir fechas bloqueadas
 exports.addBlockedDate = async (req, res) => {
   const blockedDatesArray = req.body; // Recibir un array de fechas bloqueadas
