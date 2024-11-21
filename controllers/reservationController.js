@@ -44,9 +44,9 @@ exports.makeReservation = async (req, res) => {
         `SELECT * FROM weekly_availability 
          WHERE field_id = $1 AND day_of_week = $2 
          AND start_time <= $3 AND end_time >= $4`,
-        [field_id, new Date(reservation_date).getDay() + 1, reservation_start_time, reservation_end_time]
+        [field_id, new Date(reservation_date).getDay(), reservation_start_time, reservation_end_time]
       );
-  
+      console.log(new Date(reservation_date).getDay())
       if (availability.rows.length === 0) {
         await client.query('ROLLBACK');
         return res.status(400).json({ message: 'Franja horaria no disponible' });
