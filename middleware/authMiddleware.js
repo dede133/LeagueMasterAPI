@@ -17,4 +17,21 @@ const isAuthenticated = (req, res, next) => {
   res.status(401).json({ message: 'No autorizado. Inicia sesión para acceder a esta ruta.' });
 };
 
-module.exports = { isAuthenticated };
+const checkRole = (role) => {
+  return (req, res, next) => {
+    const user = req.session.user;
+    console.log('Verificando rol de usuario:', user); // Log para depuración
+
+    if (!user) {
+      return res.status(401).json({ message: 'No autorizado. Inicia sesión para continuar.' });
+    }
+
+    if (user.user_role !== role) {
+      return res.status(403).json({ message: 'No tienes permiso para realizar esta acción.' });
+    }
+
+    next(); // Permite continuar si el usuario tiene el rol correcto
+  };
+};
+
+module.exports = { isAuthenticated, checkRole };

@@ -2,9 +2,11 @@
 const express = require('express');
 const router = express.Router();
 const fieldController = require('../controllers/fieldController');
+const { checkRole } = require('../middleware/authMiddleware');
+
 
 // Ruta para añadir un nuevo campo, usando Multer para manejar la subida de archivos
-router.post('/add-field', fieldController.upload.array('photos'), fieldController.addField);
+router.post('/add-field', checkRole('admin') ,  fieldController.upload.array('photos'), fieldController.addField);
 
 router.get('/user-fields', fieldController.getFieldsByUser);
 

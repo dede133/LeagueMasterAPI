@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const availabilityController = require('../controllers/availabilityController');
 
-// Rutas relacionadas con la disponibilidad
 router.post('/weekly', availabilityController.addOrUpdateWeeklyAvailability);
 router.delete('/weekly/:field_id', availabilityController.deleteWeeklyAvailabilityBatch);
 router.post('/blocked', availabilityController.addBlockedDate);

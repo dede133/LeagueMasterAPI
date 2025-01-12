@@ -45,8 +45,6 @@ exports.addField = async (req, res) => {
       address,
       field_type,
       field_info,
-      features,
-      availability,
     } = req.body;
 
     // Aquí transformamos las barras invertidas a barras normales
@@ -62,8 +60,8 @@ exports.addField = async (req, res) => {
 
     // Inserta el campo en la base de datos incluso con otros campos vacíos
       const insertFieldQuery = `
-      INSERT INTO fields (name, latitude, longitude, address, field_type, field_info, photo_url, features, availability, owner_user_id, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW()) RETURNING *
+      INSERT INTO fields (name, latitude, longitude, address, field_type, field_info, photo_url, owner_user_id, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW()) RETURNING *
     `;
     
     const values = [
@@ -73,9 +71,7 @@ exports.addField = async (req, res) => {
       address || null, 
       field_type || null, 
       field_info || null, 
-      photoUrls || null, 
-      features || null, 
-      availability || null, 
+      photoUrls || null,  
       user.id // El ID del usuario autenticado
     ];
   

@@ -1,43 +1,34 @@
-require('dotenv').config(); // Cargar variables de entorno al inicio
+require('dotenv').config(); 
 
 const express = require('express');
 const session = require('express-session');
 const { Pool } = require('pg');
-const passport = require('./config/passport'); // Importa la configuración de Passport
-const path = require('path'); // Requerido para enviar archivos
-const cors = require('cors'); // Importar CORS correctamente
-const cookieParser = require('cookie-parser'); // Importar cookie-parser
-const jwt = require('jsonwebtoken'); // Importar jsonwebtoken para verificar JWT
+const passport = require('./config/passport'); 
+const path = require('path'); 
+const cors = require('cors'); 
+const cookieParser = require('cookie-parser'); 
+const jwt = require('jsonwebtoken'); 
 
 
-// Importar rutas
 const authRoutes = require('./routes/auth');
 const fieldRoutes = require('./routes/field');
 const reservationRoutes = require('./routes/reservation');
 const availabilityRoutes = require('./routes/availability');
+const leagueRoutes = require('./routes/league');
+const matchRoutes = require('./routes/match');
 
 
-// Crear una instancia de la aplicación Express
 const app = express();
-
-// Configurar CORS para permitir solicitudes desde tu frontend
 app.use(cors({
-  origin: 'http://localhost:3000', // Asegúrate de reemplazar esto con la URL de tu frontend
-  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Métodos permitidos
-  credentials: true, // Permitir cookies y credenciales
+  origin: 'http://localhost:3000',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], 
+  credentials: true, 
 }));
-
-
-// Middleware para parsear JSON
 app.use(express.json());
-
-// Middleware para manejar cookies
 app.use(cookieParser());
+app.use(express.urlencoded({ extended: true })); 
 
-// Middleware para parsear solicitudes de formularios
-app.use(express.urlencoded({ extended: true })); // Asegúrate de añadir esta línea
 
-// Configurar la conexión a PostgreSQL
 const pool = new Pool({
   user: process.env.DB_USER,
   host: process.env.DB_HOST,
@@ -46,7 +37,6 @@ const pool = new Pool({
   port: process.env.DB_PORT,
 });
 
-// Probar la conexión a la base de datos
 pool.query('SELECT NOW()', (err, res) => {
   if (err) {
     console.error('Error al conectar a la base de datos:', err.stack);
@@ -58,10 +48,10 @@ pool.query('SELECT NOW()', (err, res) => {
 
 app.use((req, res, next) => {
   console.log(`[LOG] ${req.method} ${req.url} - ${new Date().toISOString()}`);
-  next(); // Continúa al siguiente middleware o ruta
+  next(); 
 });
 
-// Configurar la sesión para usar con Passport
+
 app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
@@ -79,27 +69,24 @@ app.use((req, res, next) => {
   next();
 });
 
-// Inicializar Passport y la sesión
+
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Ruta para servir el archivo de inicio de sesión
-app.get('/login', (req, res) => {
-  res.sendFile(path.join(__dirname, 'login.html'));
-});
-
-// Verificar el token JWT
 const verifyToken = (token) => {
   try {
-    return jwt.verify(token, process.env.JWT_SECRET); // Verifica el JWT con tu secreto
+    return jwt.verify(token, process.env.JWT_SECRET); 
   } catch (err) {
     console.error('Error al verificar el token:', err);
     throw new Error('Token inválido');
   }
 };
 
+app.get('/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'login.html'));
+});
 
-// Usar rutas
+
 app.use('/api/auth', authRoutes);
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -110,10 +97,12 @@ app.use('/api/reservations', reservationRoutes);
 
 app.use('/api/availability', availabilityRoutes);
 
+app.use('/api/leagues', leagueRoutes);
 
-// Definir el puerto del servidor
+app.use('/api/matches', matchRoutes);
+
 const PORT = process.env.PORT || 5000;
 
-// Iniciar el servidor
+
 app.listen(PORT, () => console.log(`Servidor corriendo en el puerto ${PORT}`));
 

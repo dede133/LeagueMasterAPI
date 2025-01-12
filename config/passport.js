@@ -2,7 +2,6 @@ const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const { Pool } = require('pg');
 
-// Configurar la conexión a PostgreSQL
 const pool = new Pool({
   user: process.env.DB_USER,
   host: process.env.DB_HOST,
@@ -11,7 +10,6 @@ const pool = new Pool({
   port: process.env.DB_PORT,
 });
 
-// Configurar Passport para usar la estrategia de Google
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
@@ -19,15 +17,12 @@ passport.use(new GoogleStrategy({
 },
 async (accessToken, refreshToken, profile, done) => {
   try {
-    // Buscar usuario en la base de datos por su Google ID
     const userQuery = 'SELECT * FROM users WHERE google_id = $1';
     const { rows } = await pool.query(userQuery, [profile.id]);
 
     if (rows.length > 0) {
-      // Si el usuario existe, continuar con el proceso de autenticación
       return done(null, rows[0]);
     } else {
-      // Si el usuario no existe, crearlo en la base de datos
       const insertUserQuery = `
         INSERT INTO users (name, email, google_id)
         VALUES ($1, $2, $3) RETURNING *
@@ -40,13 +35,11 @@ async (accessToken, refreshToken, profile, done) => {
   }
 }));
 
-// Serializar el usuario en la sesión
 passport.serializeUser((user, done) => {
-  console.log('Serializando usuario:', user); // Log para depuración
-  done(null, user.id); // Asegura que el ID del usuario se almacena en la sesión
+  console.log('Serializando usuario:', user);
+  done(null, user.id);
 });
 
-// Deserializar el usuario de la sesión
 passport.deserializeUser(async (id, done) => {
   
   try {
@@ -54,7 +47,7 @@ passport.deserializeUser(async (id, done) => {
     const { rows } = await pool.query(userQuery, [id]);
 
     if (rows.length > 0) {
-      done(null, rows[0]); // Recupera el usuario de la base de datos
+      done(null, rows[0]);
     } else {
       done(new Error('Usuario no encontrado'), null);
     }
