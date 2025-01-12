@@ -26,7 +26,6 @@ exports.makeReservation = async (req, res) => {
   
       await client.query('BEGIN');
   
-      // Verificar si la franja está bloqueada en las fechas bloqueadas
       const blocked = await client.query(
         `SELECT * FROM blocked_dates 
          WHERE field_id = $1 
@@ -39,7 +38,6 @@ exports.makeReservation = async (req, res) => {
         return res.status(400).json({ message: 'La franja horaria está bloqueada' });
       }
   
-      // Verificar si la franja está disponible en weekly_availability
       const availability = await client.query(
         `SELECT * FROM weekly_availability 
          WHERE field_id = $1 AND day_of_week = $2 
@@ -52,7 +50,6 @@ exports.makeReservation = async (req, res) => {
         return res.status(400).json({ message: 'Franja horaria no disponible' });
       }
   
-      // Crear la reserva
       await client.query(
         `INSERT INTO reservations (field_id, user_id, reservation_date, reservation_start_time, reservation_end_time, price, status) 
          VALUES ($1, $2, $3, $4, $5, $6, 'booked')`,

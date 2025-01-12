@@ -1,11 +1,7 @@
 // controllers/authController.js
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
-// authController.js
-
 const { generateResetToken, sendResetEmail } = require('../utils/authUtils'); // Importa funciones desde authUtils.js
-
-// Usa las funciones como antes
 
 
 // Configurar la conexión a PostgreSQL
@@ -17,7 +13,6 @@ const pool = new Pool({
   port: process.env.DB_PORT,
 });
 
-// Controlador para registrar un nuevo usuario
 exports.registerUser = async (req, res) => {
   const { name, email, password } = req.body;
 
@@ -26,7 +21,6 @@ exports.registerUser = async (req, res) => {
   }
 
   try {
-    // Verificar si el usuario ya existe
     const userExistsQuery = 'SELECT * FROM users WHERE email = $1';
     const { rowCount } = await pool.query(userExistsQuery, [email]);
 
@@ -34,26 +28,21 @@ exports.registerUser = async (req, res) => {
       return res.status(400).json({ message: 'El email ya está registrado' });
     }
 
-    // Encriptar la contraseña
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Insertar el nuevo usuario en la base de datos
     const insertUserQuery = `
       INSERT INTO users (name, email, password, user_role)
       VALUES ($1, $2, $3, $4) RETURNING user_id
     `;
     const { rows } = await pool.query(insertUserQuery, [name, email, hashedPassword, "user"]);
 
-    // Crear la sesión de usuario
     req.session.user = {
       id: rows[0].user_id,
       name,
       email,
       user_role: "user"
     };
-
-    // Enviar respuesta de éxito con la sesión creada
     res.status(201).json({ message: 'Usuario registrado con éxito', user: req.session.user });
   } catch (error) {
     console.error('Error en el servidor:', error.message);
@@ -69,7 +58,6 @@ exports.loginUser = async (req, res) => {
   }
 
   try {
-    // Verificar si el usuario existe en la base de datos
     const userQuery = 'SELECT * FROM users WHERE email = $1';
     const { rows } = await pool.query(userQuery, [email]);
 
@@ -79,14 +67,11 @@ exports.loginUser = async (req, res) => {
 
     const user = rows[0];
 
-    // Comparar la contraseña proporcionada con la almacenada
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
       return res.status(400).json({ message: 'Credenciales inválidas' });
     }
-
-    // Si la contraseña coincide, crea la sesión de usuario
     req.session.user = {
       id: user.user_id,
       name: user.name,
@@ -96,7 +81,6 @@ exports.loginUser = async (req, res) => {
 
     console.log('Sesión creada:', req.session);
 
-    // Enviar respuesta de éxito con la sesión creada
     res.json({ message: 'Inicio de sesión exitoso', user: req.session.user });
   } catch (error) {
     console.error('Error en el servidor:', error.message);
