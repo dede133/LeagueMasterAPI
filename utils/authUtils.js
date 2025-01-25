@@ -2,12 +2,12 @@
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 
-// Función para generar un token de restablecimiento de contraseña
+
 function generateResetToken() {
-  return crypto.randomBytes(32).toString('hex'); // Genera un token aleatorio de 32 bytes
+  return crypto.randomBytes(32).toString('hex'); 
 }
 
-// Función para enviar el correo de restablecimiento
+
 async function sendResetEmail(email, token) {
   const transporter = nodemailer.createTransport({
     service: 'Gmail',

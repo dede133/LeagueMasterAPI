@@ -1,6 +1,6 @@
 const { Pool } = require('pg');
 
-// Configurar la conexión a PostgreSQL
+
 const pool = new Pool({
   user: process.env.DB_USER,
   host: process.env.DB_HOST,
@@ -9,22 +9,22 @@ const pool = new Pool({
   port: process.env.DB_PORT,
 });
 
-// Añadir o actualizar disponibilidad semanal
+
 exports.addOrUpdateWeeklyAvailability = async (req, res) => {
-  const availabilityArray = req.body; // Recibir un array de días
+  const availabilityArray = req.body; 
   console.log("avaiability", req.body)
   try {
     for (const availability of availabilityArray) {
       const { field_id, day_of_week, start_time, end_time, price = 60, available_durations = [60] } = availability;
 
-      // Eliminar la disponibilidad anterior si existe
+      
       await pool.query(
         `DELETE FROM weekly_availability 
          WHERE field_id = $1 AND day_of_week = $2`,
         [field_id, day_of_week]
       );
 
-      // Insertar la nueva disponibilidad
+      
       const insertAvailabilityQuery = `
         INSERT INTO weekly_availability 
         (field_id, day_of_week, start_time, end_time, price, available_durations) 
@@ -43,8 +43,8 @@ exports.addOrUpdateWeeklyAvailability = async (req, res) => {
 };
 
 exports.deleteWeeklyAvailabilityBatch = async (req, res) => {
-  const { field_id } = req.params; // Obtiene field_id de los parámetros de la URL
-  const daysToDelete = req.body; // Obtiene el array de días del cuerpo de la solicitud
+  const { field_id } = req.params; 
+  const daysToDelete = req.body; 
 
   try {
     for (const { day_of_week } of daysToDelete) {
@@ -62,19 +62,17 @@ exports.deleteWeeklyAvailabilityBatch = async (req, res) => {
   }
 };
 
-
-// Añadir fechas bloqueadas
 exports.addBlockedDate = async (req, res) => {
-  const blockedDatesArray = req.body; // Recibir un array de fechas bloqueadas
+  const blockedDatesArray = req.body; 
   console.log(req.body);
   try {
     for (const blockedDate of blockedDatesArray) {
       const { field_id, start_time, end_time, reason = '' } = blockedDate;
 
-      // Si end_time es null, asignar start_time a end_time
+      
       const finalEndTime = end_time ? end_time : start_time;
 
-      // Insertar cada rango de fechas bloqueadas
+      
       const insertBlockedDateQuery = `
         INSERT INTO blocked_dates (field_id, start_time, end_time, reason) 
         VALUES ($1, $2, $3, $4) RETURNING *;
@@ -91,18 +89,16 @@ exports.addBlockedDate = async (req, res) => {
   }
 };
 
-// Eliminar una fecha bloqueada
-// Eliminar fechas bloqueadas por rango
 exports.deleteBlockedDate = async (req, res) => {
   const { field_id, start_time, end_time } = req.query;
   console.log(req.body)
   try {
-    // Verificamos que se reciban las fechas
+    
     if (!start_time) {
       return res.status(400).json({ message: 'Se requiere una fecha de inicio' });
     }
 
-    // Si end_time es null, eliminamos solo la fecha específica de start_time
+    
     const finalEndTime = end_time ? end_time : start_time;
 
     const deleteQuery = `
@@ -124,14 +120,11 @@ exports.deleteBlockedDate = async (req, res) => {
   }
 };
 
-
-
-// Obtener disponibilidad semanal y fechas bloqueadas para un campo
 exports.getWeeklyAvailability = async (req, res) => {
   const { field_id } = req.params;
 
   try {
-    // Obtener la disponibilidad semanal
+    
     const weeklyAvailability = await pool.query(
       `SELECT * FROM weekly_availability WHERE field_id = $1`,
       [field_id]
@@ -148,10 +141,10 @@ exports.getWeeklyAvailability = async (req, res) => {
 
 exports.getBlockedDatesByDate = async (req, res) => {
   const { field_id } = req.params;
-  const { start_date, end_date } = req.query; // Recibir las fechas por query
+  const { start_date, end_date } = req.query; 
 
   try {
-    // Obtener las fechas bloqueadas dentro de un rango de fechas
+    
     const blockedDates = await pool.query(
       `SELECT * FROM blocked_dates WHERE field_id = $1 AND start_time >= $2 AND end_time <= $3`,
       [field_id, start_date, end_date]
@@ -169,7 +162,7 @@ exports.getBlockedDatesByDate = async (req, res) => {
 exports.getBlockedDates = async (req, res) => {
   const { field_id } = req.params;
   try {
-    // Obtener las fechas bloqueadas y renombrar las columnas en la consulta
+    
     const blockedDates = await pool.query(
       `SELECT 
         blocked_id, 

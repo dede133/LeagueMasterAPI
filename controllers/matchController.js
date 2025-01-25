@@ -1,7 +1,7 @@
 const { Pool } = require('pg');
 const { v4: uuidv4 } = require('uuid');
 
-// Configurar conexión a PostgreSQL
+
 const pool = new Pool({
   user: process.env.DB_USER,
   host: process.env.DB_HOST,
@@ -10,18 +10,18 @@ const pool = new Pool({
   port: process.env.DB_PORT,
 });
 
-// Actualizar goles de un partido
+
 exports.updateScore = async (req, res) => {
   const { match_id } = req.params;
   const { home_team_score, away_team_score } = req.body;
 
   try {
-    // Validar datos
+    
     if (home_team_score === undefined || away_team_score === undefined) {
       return res.status(400).json({ message: 'Los goles deben estar definidos.' });
     }
 
-    // Actualizar marcador en la base de datos
+    
     await pool.query(
       `UPDATE matches SET home_team_score = $1, away_team_score = $2 WHERE match_id = $3`,
       [home_team_score, away_team_score, match_id]
@@ -35,16 +35,16 @@ exports.updateScore = async (req, res) => {
 };
 
 exports.getMatchesByLeagueAndDate = async (req, res) => {
-    const { league_id } = req.params; // ID de la liga
-    const { date } = req.query; // Fecha pasada directamente como query param
+    const { league_id } = req.params; 
+    const { date } = req.query; 
   
-    // Validar que se pase la fecha
+    
     if (!date) {
       return res.status(400).json({ message: 'Se requiere una fecha para filtrar los partidos.' });
     }
   
     try {
-      // Consulta para obtener los partidos por liga y fecha
+      
       const query = `
         SELECT 
           m.match_id, 

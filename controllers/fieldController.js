@@ -1,10 +1,10 @@
-// src/controllers/fieldsController.js
+
 
 const { Pool } = require('pg');
 const multer = require('multer');
 const path = require('path');
 
-// Configurar la conexión a la base de datos PostgreSQL
+
 const pool = new Pool({
   user: process.env.DB_USER,
   host: process.env.DB_HOST,
@@ -13,26 +13,26 @@ const pool = new Pool({
   port: process.env.DB_PORT,
 });
 
-// Configuración de Multer para manejar la subida de archivos
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/'); // Carpeta donde se guardarán las imágenes
+    cb(null, 'uploads/'); 
   },
   filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname)); // Renombra el archivo para evitar conflictos
+    cb(null, Date.now() + path.extname(file.originalname)); 
   },
 });
 
-const upload = multer({ storage }); // Middleware de Multer
+const upload = multer({ storage }); 
 
-// Controlador para añadir un nuevo campo
+
 exports.addField = async (req, res) => {
   try {
     console.log('Datos recibidos:', req.body);
     console.log('Archivos recibidos:', req.files);
     console.log('Sesión activa:', req.session.user);
 
-        // Obtener la información del usuario desde la sesión
+        
     const user = req.session.user;
     if (!user) {
       return res.status(401).json({ message: 'No autorizado. Inicia sesión para continuar.' });
@@ -47,10 +47,10 @@ exports.addField = async (req, res) => {
       field_info,
     } = req.body;
 
-    // Aquí transformamos las barras invertidas a barras normales
+    
     const photoUrls = req.files.map((file) => file.path.replace(/\\/g, '/'));
 
-    // Convertir valores vacíos a null
+    
     const lat = latitude ? parseFloat(latitude) : null;
     const lng = longitude ? parseFloat(longitude) : null;
 
@@ -58,7 +58,7 @@ exports.addField = async (req, res) => {
       return res.status(400).json({ message: 'El nombre es obligatorio' });
     }
 
-    // Inserta el campo en la base de datos incluso con otros campos vacíos
+    
       const insertFieldQuery = `
       INSERT INTO fields (name, latitude, longitude, address, field_type, field_info, photo_url, owner_user_id, created_at, updated_at)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW()) RETURNING *
@@ -72,7 +72,7 @@ exports.addField = async (req, res) => {
       field_type || null, 
       field_info || null, 
       photoUrls || null,  
-      user.id // El ID del usuario autenticado
+      user.id 
     ];
   
 
@@ -86,9 +86,9 @@ exports.addField = async (req, res) => {
 };
 
 
-// Obtener los detalles de un campo por su ID
+
 exports.getFieldById = async (req, res) => {
-  const { id } = req.params; // Obtenemos el field_id de los parámetros de la URL
+  const { id } = req.params; 
 
   try {
     const fieldQuery = 'SELECT * FROM fields WHERE field_id = $1';
@@ -105,7 +105,7 @@ exports.getFieldById = async (req, res) => {
   }
 };
 
-// Obtener todos los campos
+
 exports.getAllFields = async (req, res) => {
   try {
     const fieldsQuery = 'SELECT * FROM fields';
@@ -122,7 +122,7 @@ exports.getAllFields = async (req, res) => {
   }
 };
 
-// Obtener campos por el user_id (campos del usuario autenticado)
+
 exports.getFieldsByUser = async (req, res) => {
   try {
     const user = req.session.user;
@@ -146,5 +146,5 @@ exports.getFieldsByUser = async (req, res) => {
 };
 
 
-// Exportar la configuración de Multer como middleware
+
 exports.upload = upload;

@@ -1,26 +1,26 @@
 const isAuthenticated = (req, res, next) => {
-  console.log('Verificando autenticación. Sesión actual:', req.session); // Log para depuración
+  console.log('Verificando autenticación. Sesión actual:', req.session); 
 
-  // Verificar si hay un usuario autenticado con Passport
+  
   if (req.isAuthenticated()) {
-    console.log('Usuario autenticado con Passport:', req.user); // Confirmar usuario autenticado con Passport
+    console.log('Usuario autenticado con Passport:', req.user); 
     return next();
   }
 
-  // Verificar si hay un usuario autenticado con el sistema de login propio
+  
   if (req.session && req.session.user) {
-    console.log('Usuario autenticado con el sistema de login propio:', req.session.user); // Confirmar usuario autenticado con login propio
+    console.log('Usuario autenticado con el sistema de login propio:', req.session.user); 
     return next();
   }
 
-  console.log('No hay sesión activa o usuario no autenticado'); // Si no hay sesión activa
+  console.log('No hay sesión activa o usuario no autenticado'); 
   res.status(401).json({ message: 'No autorizado. Inicia sesión para acceder a esta ruta.' });
 };
 
 const checkRole = (role) => {
   return (req, res, next) => {
     const user = req.session.user;
-    console.log('Verificando rol de usuario:', user); // Log para depuración
+    console.log('Verificando rol de usuario:', user); 
 
     if (!user) {
       return res.status(401).json({ message: 'No autorizado. Inicia sesión para continuar.' });
@@ -30,7 +30,7 @@ const checkRole = (role) => {
       return res.status(403).json({ message: 'No tienes permiso para realizar esta acción.' });
     }
 
-    next(); // Permite continuar si el usuario tiene el rol correcto
+    next(); 
   };
 };
 
