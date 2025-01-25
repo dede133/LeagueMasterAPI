@@ -1,6 +1,6 @@
 const { Pool } = require('pg');
 
-// Configurar conexión a PostgreSQL
+
 const pool = new Pool({
   user: process.env.DB_USER,
   host: process.env.DB_HOST,
@@ -9,7 +9,7 @@ const pool = new Pool({
   port: process.env.DB_PORT,
 });
 
-// Actualizar estado de inscripción o pago de un equipo
+
 exports.updateTeamStatus = async (req, res) => {
     const { team_id } = req.params;
     const { status, payment_status } = req.body;

@@ -1,10 +1,10 @@
-// controllers/authController.js
+
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
-const { generateResetToken, sendResetEmail } = require('../utils/authUtils'); // Importa funciones desde authUtils.js
+const { generateResetToken, sendResetEmail } = require('../utils/authUtils'); 
 
 
-// Configurar la conexión a PostgreSQL
+
 const pool = new Pool({
   user: process.env.DB_USER,
   host: process.env.DB_HOST,
@@ -94,7 +94,7 @@ exports.logoutUser = (req, res) => {
       console.error('Error al cerrar sesión:', err);
       return res.status(500).json({ message: 'Error al cerrar la sesión.' });
     }
-    res.clearCookie('connect.sid'); // Elimina la cookie de sesión
+    res.clearCookie('connect.sid'); 
     res.json({ message: 'Sesión cerrada exitosamente.' });
   });
 };
@@ -102,7 +102,7 @@ exports.logoutUser = (req, res) => {
 exports.requestPasswordReset = async (req, res) => {
   const { email } = req.body;
   
-  // Verifica si el correo existe en la base de datos
+  
   const userQuery = 'SELECT * FROM users WHERE email = $1';
   const { rows } = await pool.query(userQuery, [email]);
   
@@ -110,16 +110,16 @@ exports.requestPasswordReset = async (req, res) => {
     return res.status(404).json({ message: 'Correo no encontrado' });
   }
 
-  // Genera un token de restablecimiento de contraseña
-  const resetToken = generateResetToken(); // Implementa esta función
-  const expirationDate = new Date(Date.now() + 3600000); // 1 hora de validez
   
-  // Guarda el token y la fecha de expiración en la base de datos
+  const resetToken = generateResetToken(); 
+  const expirationDate = new Date(Date.now() + 3600000); 
+  
+  
   const insertTokenQuery = 'UPDATE users SET reset_token = $1, reset_token_expiration = $2 WHERE email = $3';
   await pool.query(insertTokenQuery, [resetToken, expirationDate, email]);
   
-  // Enviar correo electrónico al usuario con el enlace de restablecimiento
-  sendResetEmail(email, resetToken); // Implementa esta función para enviar correos
+  
+  sendResetEmail(email, resetToken); 
 
   res.json({ message: 'Se ha enviado un enlace de restablecimiento de contraseña a tu correo' });
 };
@@ -127,7 +127,7 @@ exports.requestPasswordReset = async (req, res) => {
 exports.verifyResetToken = async (req, res) => {
   const { token } = req.query;
   
-  // Verifica si el token es válido y no ha expirado
+  
   const tokenQuery = 'SELECT * FROM users WHERE reset_token = $1 AND reset_token_expiration > NOW()';
   const { rows } = await pool.query(tokenQuery, [token]);
   
@@ -141,7 +141,7 @@ exports.verifyResetToken = async (req, res) => {
 exports.resetPassword = async (req, res) => {
   const { token, newPassword } = req.body;
   
-  // Verifica si el token es válido y no ha expirado
+  
   const tokenQuery = 'SELECT * FROM users WHERE reset_token = $1 AND reset_token_expiration > NOW()';
   const { rows } = await pool.query(tokenQuery, [token]);
   
@@ -149,10 +149,10 @@ exports.resetPassword = async (req, res) => {
     return res.status(400).json({ message: 'Token de restablecimiento inválido o expirado' });
   }
 
-  // Encripta la nueva contraseña
+  
   const hashedPassword = await bcrypt.hash(newPassword, 10);
   
-  // Actualiza la contraseña en la base de datos y elimina el token
+  
   const updatePasswordQuery = 'UPDATE users SET password = $1, reset_token = NULL, reset_token_expiration = NULL WHERE id = $2';
   await pool.query(updatePasswordQuery, [hashedPassword, rows[0].id]);
 
@@ -160,10 +160,10 @@ exports.resetPassword = async (req, res) => {
 };
 
 exports.deleteUser = async (req, res) => {
-  const { id } = req.params; // Asume que el ID del usuario se pasa como parámetro en la URL
+  const { id } = req.params; 
 
   try {
-    // Verifica si el usuario existe
+    
     const userQuery = 'SELECT * FROM users WHERE user_id = $1';
     const { rowCount } = await pool.query(userQuery, [id]);
 
@@ -172,24 +172,24 @@ exports.deleteUser = async (req, res) => {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
 
-    // Elimina el usuario de la base de datos
+    
     const deleteUserQuery = 'DELETE FROM users WHERE user_id = $1';
     await pool.query(deleteUserQuery, [id]);
 
     console.log('Usuario eliminado con éxito:', id);
 
-    // Si el usuario está autenticado, destruir la sesión
+    
     if (req.session.user && req.session.user.id === parseInt(id, 10)) {
       req.session.destroy((err) => {
         if (err) {
           console.error('Error al cerrar sesión después de eliminar el usuario:', err);
           return res.status(500).json({ message: 'Error al cerrar la sesión después de eliminar el usuario.' });
         }
-        res.clearCookie('connect.sid'); // Elimina la cookie de sesión
-        return res.json({ message: 'Usuario eliminado y sesión cerrada con éxito.' }); // Asegúrate de enviar la respuesta aquí
+        res.clearCookie('connect.sid'); 
+        return res.json({ message: 'Usuario eliminado y sesión cerrada con éxito.' }); 
       });
     } else {
-      // Si no hay sesión para destruir, simplemente responde con éxito
+      
       return res.json({ message: 'Usuario eliminado con éxito.' });
     }
   } catch (error) {
@@ -199,7 +199,7 @@ exports.deleteUser = async (req, res) => {
 };
 
 exports.checkUserAuth = async (req, res) => {
-  // Ruta para verificar la autenticación
+  
   console.log("Verificando la session de usuario")
     if (req.session && req.session.user) {
       console.log('Sesión activa:', req.session.user);
@@ -211,12 +211,11 @@ exports.checkUserAuth = async (req, res) => {
   };
   
 
-// authController.js
 exports.getUserProfile = async (req, res) => {
   try {
     console.log('Petición para obtener perfil de usuario recibida');
 
-    // Verificar si la sesión de usuario existe
+    
     if (!req.session.user) {
       console.log('No hay sesión de usuario activa');
       return res.status(401).json({ message: 'No autenticado' });
@@ -224,7 +223,7 @@ exports.getUserProfile = async (req, res) => {
 
     console.log('Usuario autenticado, ID de usuario:', req.session.user.id);
 
-    // Obtener el usuario autenticado desde la base de datos
+    
     const userQuery = 'SELECT user_id, name, email FROM users WHERE user_id = $1';
     const { rows } = await pool.query(userQuery, [req.session.user.id]);
 

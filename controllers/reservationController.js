@@ -1,7 +1,7 @@
-// reservationController.js
+
 const { Pool } = require('pg');
 
-// Configurar la conexión a PostgreSQL
+
 const pool = new Pool({
     user: process.env.DB_USER,
     host: process.env.DB_HOST,
@@ -16,7 +16,7 @@ exports.makeReservation = async (req, res) => {
     const client = await pool.connect();
   
     try {
-      // Verificar que el usuario esté autenticado
+      
       const user = req.session.user;
       if (!user) {
         return res.status(401).json({ message: 'No autorizado. Inicia sesión para continuar.' });
@@ -68,7 +68,7 @@ exports.makeReservation = async (req, res) => {
     }
 };
 
-// Cancelar una reserva
+
 exports.cancelReservation = async (req, res) => {
   const { reservation_id } = req.params;
 
@@ -81,7 +81,7 @@ exports.cancelReservation = async (req, res) => {
   }
 };
 
-// Actualizar estado de reserva (por ejemplo, pagado)
+
 exports.updateReservationStatus = async (req, res) => {
   const { reservation_id } = req.params;
   const { status } = req.body;
@@ -95,14 +95,14 @@ exports.updateReservationStatus = async (req, res) => {
   }
 };
 
-// Obtener reservas para un campo específico
+
 exports.getReservationsByField = async (req, res) => {
-  const { field_id } = req.params; // Obtener el field_id desde los parámetros de la URL
+  const { field_id } = req.params; 
 
   const client = await pool.connect();
 
   try {
-    // Obtener todas las reservas asociadas a un campo específico
+    
     const reservations = await client.query(
       `SELECT * FROM reservations 
        WHERE field_id = $1
@@ -123,15 +123,15 @@ exports.getReservationsByField = async (req, res) => {
   }
 };
 
-// Obtener reservas por campo y fechas
+
 exports.getReservationsByFieldAndDate = async (req, res) => {
-  const { field_id } = req.params; // Obtener el field_id desde los parámetros de la URL
-  const { start, end } = req.query; // Obtener las fechas desde los parámetros de la query (start y end)
+  const { field_id } = req.params; 
+  const { start, end } = req.query; 
 
   const client = await pool.connect();
 
   try {
-    // Consultar las reservas que caen dentro del rango de fechas para el campo específico
+    
     const reservations = await client.query(
       `SELECT * FROM reservations
        WHERE field_id = $1
@@ -141,7 +141,7 @@ exports.getReservationsByFieldAndDate = async (req, res) => {
       [field_id, start, end]
     );
 
-    // Si no se encuentran reservas, devolver un array vacío
+    
     res.status(200).json(reservations.rows);
   } catch (error) {
     console.error('Error al obtener reservas:', error);
@@ -157,8 +157,8 @@ exports.getReservationsByUser = async (req, res) => {
   const client = await pool.connect();
 
   try {
-    // Obtener solo las reservas futuras del usuario
-    const currentDate = new Date().toISOString(); // fecha actual en UTC
+    
+    const currentDate = new Date().toISOString(); 
     const reservations = await client.query(
       `SELECT * FROM reservations
        WHERE user_id = $1
@@ -176,10 +176,10 @@ exports.getReservationsByUser = async (req, res) => {
   }
 };
 
-// src/controllers/reservationController.js
+
 
 exports.cancelReservation = async (req, res) => {
-  const { reservation_id } = req.params; // Obtener el ID de la reserva desde los parámetros de la URL
+  const { reservation_id } = req.params; 
 
   const client = await pool.connect();
 
