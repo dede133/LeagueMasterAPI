@@ -32,25 +32,15 @@ exports.addField = async (req, res) => {
     console.log('Archivos recibidos:', req.files);
     console.log('Sesión activa:', req.session.user);
 
-        
     const user = req.session.user;
     if (!user) {
       return res.status(401).json({ message: 'No autorizado. Inicia sesión para continuar.' });
     }
-    
-    const {
-      name,
-      latitude,
-      longitude,
-      address,
-      field_type,
-      field_info,
-    } = req.body;
 
-    
+    const { name, latitude, longitude, address, field_type, field_info, services } = req.body;
+
     const photoUrls = req.files.map((file) => file.path.replace(/\\/g, '/'));
 
-    
     const lat = latitude ? parseFloat(latitude) : null;
     const lng = longitude ? parseFloat(longitude) : null;
 
@@ -58,32 +48,40 @@ exports.addField = async (req, res) => {
       return res.status(400).json({ message: 'El nombre es obligatorio' });
     }
 
-    
-      const insertFieldQuery = `
-      INSERT INTO fields (name, latitude, longitude, address, field_type, field_info, photo_url, owner_user_id, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW()) RETURNING *
+    const insertFieldQuery = `
+      INSERT INTO fields (name, latitude, longitude, address, field_type, field_info, services, photo_url, owner_user_id, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW()) RETURNING field_id, name, address
     `;
-    
+
     const values = [
-      name, 
-      lat, 
-      lng, 
-      address || null, 
-      field_type || null, 
-      field_info || null, 
-      photoUrls || null,  
-      user.id 
+      name,
+      lat,
+      lng,
+      address || null,
+      field_type || null,
+      field_info || null,
+      services || '[]',
+      photoUrls.length ? photoUrls : null,
+      user.id,
     ];
-  
 
     const { rows } = await pool.query(insertFieldQuery, values);
 
-    res.status(201).json({ message: 'Campo añadido con éxito', field: rows[0] });
+    if (!rows.length) {
+      return res.status(500).json({ message: 'Error al insertar en la base de datos' });
+    }
+
+    const field = rows[0];
+
+    console.log('Campo añadido con éxito:', field);
+
+    res.status(201).json({ message: 'Campo añadido con éxito', field });
   } catch (error) {
-    console.error('Error al añadir el campo:', error.message);
+    console.error('Error al añadir el campo:', error);
     res.status(500).json({ message: 'Error en el servidor', error: error.message });
   }
 };
+
 
 
 
