@@ -12,7 +12,7 @@ const pool = new Pool({
 
 exports.makeReservation = async (req, res) => {
     const { field_id, reservation_date, reservation_start_time, reservation_end_time } = req.body;
-  
+    console.log(req.body, new Date(reservation_date).getDay(), reservation_date)
     const client = await pool.connect();
   
     try {
@@ -34,6 +34,7 @@ exports.makeReservation = async (req, res) => {
       );
   
       if (blocked.rows.length > 0) {
+        console.log('blocked', blocked.rows);
         await client.query('ROLLBACK');
         return res.status(400).json({ message: 'La franja horaria está bloqueada' });
       }
@@ -42,10 +43,11 @@ exports.makeReservation = async (req, res) => {
         `SELECT * FROM weekly_availability 
          WHERE field_id = $1 AND day_of_week = $2 
          AND start_time <= $3 AND end_time >= $4`,
-        [field_id, new Date(reservation_date).getDay(), reservation_start_time, reservation_end_time]
+        [field_id, new Date(reservation_date).getDay()-1, reservation_start_time, reservation_end_time]
       );
-      console.log(new Date(reservation_date).getDay())
+      console.log(new Date(reservation_date).getDay()-1)
       if (availability.rows.length === 0) {
+        console.log('availability', availability.rows);
         await client.query('ROLLBACK');
         return res.status(400).json({ message: 'Franja horaria no disponible' });
       }
